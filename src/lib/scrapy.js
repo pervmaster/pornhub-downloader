@@ -131,7 +131,7 @@ const parseDownloadInfo = (bodyStr) => {
     const jsonStr = bodyStr.substring(begin, end + 1);
     let arr = JSON.parse(jsonStr);
     arr = _.filter(arr, item => {
-      return item.videoUrl.length > 0;
+      return item.videoUrl.length > 0 && item.format !== 'hls';
     });
     arr = _.orderBy(arr, 'quality', 'desc');
     if (arr.length > 0) {
