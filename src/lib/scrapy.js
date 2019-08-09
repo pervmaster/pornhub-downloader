@@ -108,18 +108,24 @@ const parseDownloadInfo = (bodyStr) => {
     return info;
   }
 
-  let begin, end;
+  let begin = [], end = [];
   for (let i = idx; i < bodyStr.length; i++) {
     const tmpStr = bodyStr.substr(i, 1);
     if (tmpStr === '[') {
-      begin = i;
+      begin.push(i);
     }
 
     if (tmpStr === ']') {
-      end = i;
-      break;
+      end.push(i);
+
+      if (begin.length === end.length) {
+        break;
+      }
     }
   }
+
+  begin = begin.shift();
+  end = end.pop();
 
   if (begin >= 0 && end >= 0) {
     const jsonStr = bodyStr.substring(begin, end + 1);
