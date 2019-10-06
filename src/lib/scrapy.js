@@ -237,20 +237,37 @@ const downloadVideo = (ditem) => {
 
             try {
               const oneFile = await (new Promise((resolve, reject) => {
+                if (fse.existsSync(file)) {
+                  log.info(`file already exists:  ${file}`);
+
+                  const stats = fse.statSync(file);
+                  const expectedSize = item.end - item.start;
+
+                  if (Math.abs(stats['size'] - expectedSize) < 10) {
+                    log.info(`file look like it's about the right size, skipping...`);
+                    return resolve(`skipping file${idx}`);
+                  } else {
+                    log.info(`file is ${stats['size']} bytes, but should be ${expectedSize} bytes, deleting and redownloading...`);
+                    fse.unlinkSync(file);
+                  }
+                }
+
+                const t0 = new Date();
+
                 request.get(copyOpts)
                   .on('error', err => {
                     reject(err);
                   })
                   .pipe(fse.createWriteStream(file, { encoding: 'binary' }))
                   .on('close', () => {
-                    resolve(`file${idx} has been downloaded!`);
+                    resolve(`file${idx} has been downloaded! (${(new Date() - t0)/1000} seconds)`);
                   });
               }));
               idx += 1;
             } catch (error) {
               return reject(error);
             }
-            // console.log(oneFile);
+            console.log(oneFile);
           }
 
           log.info('all pieces have been downloaded!');
