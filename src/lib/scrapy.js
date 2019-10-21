@@ -102,42 +102,34 @@ const findTitle = (bodyStr) => {
 
 const parseDownloadInfo = (bodyStr) => {
   let info;
-  const idx = bodyStr.indexOf('mediaDefinitions');
+  const idx = bodyStr.indexOf('<div id="player"');
 
   if (idx < 0) {
     return info;
   }
 
-  let begin = [], end = [];
-  for (let i = idx; i < bodyStr.length; i++) {
-    const tmpStr = bodyStr.substr(i, 1);
-    if (tmpStr === '[') {
-      begin.push(i);
-    }
+  const chunk = bodyStr.substr(idx, bodyStr.substr(idx).indexOf('">'));
+  const parts = chunk.split('data-video-id="');
 
-    if (tmpStr === ']') {
-      end.push(i);
-
-      if (begin.length === end.length) {
-        break;
-      }
-    }
+  if (!chunk || !parts.length) {
+    return info;
   }
 
-  begin = begin.shift();
-  end = end.pop();
+  const videoId = parts[1];
+  const idx2 = bodyStr.indexOf(`var flashvars_${videoId}`);
+  const flashVarsLength = bodyStr.substr(idx2).indexOf('loadScriptUniqueId.push(');
 
-  if (begin >= 0 && end >= 0) {
-    const jsonStr = bodyStr.substring(begin, end + 1);
-    let arr = JSON.parse(jsonStr);
-    arr = _.filter(arr, item => {
-      return item.videoUrl.length > 0 && item.format !== 'hls';
-    });
-    arr = _.orderBy(arr, 'quality', 'desc');
-    if (arr.length > 0) {
-      info = arr[0];
-      info.title = findTitle(bodyStr);
-    }
+  eval(bodyStr.substr(idx2, flashVarsLength));
+  const videoOptions = eval(`qualityItems_${videoId}`);
+
+  if (videoOptions && videoOptions.length) {
+    vid = videoOptions[videoOptions.length - 1];
+    info = {
+      quality: vid.text,
+      videoUrl: vid.url,
+      format: 'mp4',
+      title: findTitle(bodyStr),
+    };
   }
 
   return info;
@@ -267,7 +259,6 @@ const downloadVideo = (ditem) => {
             } catch (error) {
               return reject(error);
             }
-            console.log(oneFile);
           }
 
           log.info('all pieces have been downloaded!');
