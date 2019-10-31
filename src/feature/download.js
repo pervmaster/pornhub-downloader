@@ -12,6 +12,12 @@ const urls = process.argv.slice(2);
       return;
     }
 
+    if (url.includes('thumbzilla.com')) {
+      const parts = url.split('/');
+      const key = parts[parts.length - 2];
+      url = `https://www.pornhub.com/view_video.php?viewkey=${key}`;
+    }
+
     const info = await scrapy.findDownloadInfo(url);
     const result = await scrapy.downloadVideo(info);
     log.info(result);
