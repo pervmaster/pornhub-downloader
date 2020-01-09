@@ -218,6 +218,8 @@ const downloadVideo = (ditem) => {
           log.info(`the file is big, need to split it to ${rgs.length} pieces`);
           const files = [];
           let idx = 0;
+          let len = 0;
+
           for (const item of rgs) {
             const copyOpts = _.cloneDeep(opts);
             copyOpts.headers['Range'] = `bytes=${item.start}-${item.end}`;
@@ -237,6 +239,7 @@ const downloadVideo = (ditem) => {
 
                   if (Math.abs(stats['size'] - expectedSize) < 10) {
                     log.info(`file look like it's about the right size, skipping...`);
+                    len += stats['size'];
                     return resolve(`skipping file${idx}`);
                   } else {
                     log.info(`file is ${stats['size']} bytes, but should be ${expectedSize} bytes, deleting and redownloading...`);
@@ -249,6 +252,12 @@ const downloadVideo = (ditem) => {
                 request.get(copyOpts)
                   .on('error', err => {
                     reject(err);
+                  })
+                  .on('response', response => {
+                    response.on('data', chunk => {
+                      len += chunk.length;
+                      bar.showPer(len / ctLength);
+                    });
                   })
                   .pipe(fse.createWriteStream(file, { encoding: 'binary' }))
                   .on('close', () => {
