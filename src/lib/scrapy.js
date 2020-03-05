@@ -8,7 +8,7 @@ const moment = require('moment');
 const config = require('../config.json');
 const utils = require('./utils');
 const log = require('./log');
-const bar = require('./bar');
+const ProgressBar = require('progress');
 
 const baseUrl = 'https://www.pornhub.com';
 const hds = {
@@ -196,6 +196,7 @@ const downloadVideo = (ditem) => {
       .on('response', async resp => {
         const resHeaders = resp.headers;
         const ctLength = resHeaders['content-length'];
+        const bar = new ProgressBar('downloading :bar :rate/bps :percent :etas', parseInt(ctLength));
 
         if (ctLength > maxChunkLen) {
           const rgs = [];
@@ -259,7 +260,7 @@ const downloadVideo = (ditem) => {
                   .on('response', response => {
                     response.on('data', chunk => {
                       len += chunk.length;
-                      bar.showPer(len / ctLength);
+                      bar.tick(chunk.length);
                     });
                   })
                   .pipe(fse.createWriteStream(file, { encoding: 'binary' }))
@@ -327,7 +328,7 @@ const downloadVideo = (ditem) => {
               resp.on('data', chunk => {
                 ws.write(chunk);
                 len += chunk.length;
-                bar.showPer(len / ctLength);
+                bar.tick(chunk.length);
               });
               resp.on('end', () => {
                 ws.end();
