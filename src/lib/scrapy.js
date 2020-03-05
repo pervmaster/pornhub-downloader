@@ -164,6 +164,8 @@ const findDownloadInfo = (key) => {
   return pm;
 };
 
+const getTmp = dir => path.join(dir, `${new Buffer.from(`${+new Date}`, 'binary').toString('base64').replace(/=/g, '')}.tmp`);
+
 const downloadVideo = (ditem) => {
   let filename = moment().format('YYYYMMDD');
   if (ditem.title && ditem.title.trim().length > 0) {
@@ -176,6 +178,7 @@ const downloadVideo = (ditem) => {
     fse.mkdirpSync(dir);
   }
   const dst = path.join(dir, filename);
+  const tmp = getTmp(dir);
 
   const pm = new Promise((resolve, reject) => {
     if (fse.existsSync(dst)) {
@@ -272,20 +275,41 @@ const downloadVideo = (ditem) => {
 
           log.info('all pieces have been downloaded!');
           log.info('now, concat pieces...');
-          const ws = fse.createWriteStream(dst, { flag: 'a' });
+
+          const ws = fse.createWriteStream(tmp, { flag: 'a' })
+          .addListener('finish', _ => {
+            log.info('rename file...');
+            fse.renameSync(tmp, dst);
+
+            if (fse.existsSync(tmp)) {
+              log.info('Error renaming file!');
+              return reject(new Error('Error renaming file!'));
+            }
+
+            // delete temp files
+            log.info('now, delete pieces...');
+            files.forEach(file => {
+              fse.unlinkSync(file);
+            });
+
+            ws.removeAllListeners();
+
+            return resolve(`${dst} has been downloaded!`);
+          })
+          .addListener('error', error => {
+            log.info('Error saving file!');
+            log.info(err);
+
+            ws.removeAllListeners();
+
+            return reject(error);
+          });
+
           files.forEach(file => {
             const bf = fse.readFileSync(file);
             ws.write(bf);
           });
           ws.end();
-
-          // delete temp files
-          log.info('now, delete pieces...');
-          files.forEach(file => {
-            fse.unlinkSync(file);
-          });
-
-          return resolve(`${dst} has been downloaded!`);
         } else {
           const copyOpts = _.cloneDeep(opts);
           copyOpts.headers['Range'] = `bytes=0-${ctLength - 1}`;
