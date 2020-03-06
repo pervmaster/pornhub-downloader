@@ -11,24 +11,27 @@ const log = require('./log');
 const ProgressBar = require('progress');
 
 const baseUrl = 'https://www.pornhub.com';
-const hds = {
+const headers = {
   'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
   'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36'
 };
+
 const baseReqOpts = {
-  headers: hds
+  headers: headers
 };
+
 // proxy
 if (config.proxyUrl.trim().length > 0) {
   baseReqOpts.proxy = config.proxyUrl.trim();
 }
+
 // timeout
 if (config.timeout > 0) {
   baseReqOpts.timeout = config.timeout;
 }
 
 const findKeys = (opts) => {
-  const pm = new Promise((resolve, reject) => {
+  return new Promise((resolve, reject) => {
     let pageUrl = baseUrl;
     let queryObj = {};
     let reqOpts = {
@@ -36,6 +39,7 @@ const findKeys = (opts) => {
       baseUrl,
       qs: queryObj,
     };
+
     if (opts) {
       if (opts.pathname && opts.pathname.trim().length > 0) {
         pageUrl = baseUrl + path.join('', opts.pathname.trim());
@@ -53,6 +57,7 @@ const findKeys = (opts) => {
         queryObj.page = opts.page;
       }
     }
+
     Object.assign(reqOpts, baseReqOpts);
     request(reqOpts, (err, res, body) => {
       if (err) {
@@ -87,8 +92,6 @@ const findKeys = (opts) => {
       return resolve(keys);
     });
   });
-
-  return pm;
 };
 
 const findTitle = (bodyStr) => {
@@ -137,22 +140,32 @@ const parseDownloadInfo = (bodyStr) => {
 
 const findDownloadInfo = (key) => {
   let finalKey = key;
-  const pm = new Promise((resolve, reject) => {
+
+  return new Promise((resolve, reject) => {
     let pageUrl = `https://www.pornhub.com/view_video.php?viewkey=${key}`;
+
     if (key.startsWith('http')) {
       pageUrl = key;
       finalKey = key.split('=').pop();
     }
+
     let opts = {
       url: pageUrl
     };
+
     Object.assign(opts, baseReqOpts);
+
     request(opts, (err, res, body) => {
       if (err) {
         return reject(err);
       }
 
       const ditem = parseDownloadInfo(body);
+
+      if (!ditem) {
+        return reject(new Error('Unable to get download info'));
+      }
+
       if (ditem) {
         ditem.key = finalKey;
       }
@@ -160,187 +173,175 @@ const findDownloadInfo = (key) => {
       return resolve(ditem);
     });
   });
-
-  return pm;
 };
 
-const getTmp = dir => path.join(dir, `${new Buffer.from(`${+new Date}`, 'binary').toString('base64').replace(/=/g, '')}.tmp`);
 
 const downloadVideo = (ditem) => {
   let filename = moment().format('YYYYMMDD');
+
   if (ditem.title && ditem.title.trim().length > 0) {
     filename = ditem.title.trim();
   }
+
   filename += `_${ditem.quality}P_${ditem.key}.mp4`;
   filename = utils.clearFileName(filename);
+
   const dir = config.downloadDir || './downloads';
+
   if (!fse.existsSync(dir)) {
     fse.mkdirpSync(dir);
   }
-  const dst = path.join(dir, filename);
-  const tmp = getTmp(dir);
 
-  const pm = new Promise((resolve, reject) => {
-    if (fse.existsSync(dst)) {
-      return resolve(`${dst} already exists!`);
+  const destinationFilename = path.join(dir, filename);
+  const tempFilename = utils.getTempFilename(dir, ditem.key);
+
+  return new Promise((resolve, reject) => {
+    if (fse.existsSync(destinationFilename)) {
+      return resolve(`${destinationFilename} already exists!`);
     }
+
     let opts = {
       url: ditem.videoUrl
     };
+
     Object.assign(opts, baseReqOpts);
     log.verbose(`downloading > ${filename}`);
 
     const maxChunkLen = 20 * 1024 * 1024; // 20M
 
     return request.get(opts)
-      .on('response', async resp => {
-        const resHeaders = resp.headers;
-        const ctLength = resHeaders['content-length'];
-        const bar = new ProgressBar('downloading :bar :rate/bps :percent :etas', parseInt(ctLength));
+    .on('response', async resp => {
+      const resHeaders = resp.headers;
+      const ctLength = resHeaders['content-length'];
+      const bar = new ProgressBar(' :bar :rate/bps :percent :etas', parseInt(ctLength));
 
-        if (ctLength > maxChunkLen) {
-          const rgs = [];
-          const num = parseInt(ctLength / maxChunkLen);
-          const mod = parseInt(ctLength % maxChunkLen);
-          for (let i = 0; i < num; i++) {
-            const rg = {
-              start: i === 0 ? i : i * maxChunkLen + 1,
-              end: (i + 1) * maxChunkLen
-            };
-            rgs.push(rg);
-          }
+      if (ctLength > maxChunkLen) {
+        const rgs = [];
+        const num = parseInt(ctLength / maxChunkLen);
+        const mod = parseInt(ctLength % maxChunkLen);
 
-          if (mod > 0) {
-            const rg = {
-              start: num * maxChunkLen + 1,
-              end: ctLength
-            };
-            rgs.push(rg);
-          }
-          rgs[rgs.length - 1].end = rgs[rgs.length - 1].end - 1;
+        for (let i = 0; i < num; i++) {
+          const rg = {
+            start: i === 0 ? i : i * maxChunkLen + 1,
+            end: (i + 1) * maxChunkLen
+          };
+          rgs.push(rg);
+        }
 
-          log.info(`the file is big, need to split it to ${rgs.length} pieces`);
-          const files = [];
-          let idx = 0;
-          let len = 0;
+        if (mod > 0) {
+          const rg = {
+            start: num * maxChunkLen + 1,
+            end: ctLength
+          };
+          rgs.push(rg);
+        }
 
-          for (const item of rgs) {
-            const copyOpts = _.cloneDeep(opts);
-            copyOpts.headers['Range'] = `bytes=${item.start}-${item.end}`;
-            copyOpts.headers['Connection'] = 'keep-alive';
+        rgs[rgs.length - 1].end = rgs[rgs.length - 1].end - 1;
 
-            const file = path.join(dir, `${ditem.key}${idx}`);
-            files.push(file);
-            log.info(`downloading the ${idx + 1}/${rgs.length} piece...`);
+        const files = [];
+        let idx = 0;
 
-            try {
-              const oneFile = await (new Promise((resolve, reject) => {
-                if (fse.existsSync(file)) {
-                  log.info(`file already exists:  ${file}`);
+        for (const item of rgs) {
+          const copyOpts = _.cloneDeep(opts);
+          copyOpts.headers['Range'] = `bytes=${item.start}-${item.end}`;
+          copyOpts.headers['Connection'] = 'keep-alive';
 
-                  const stats = fse.statSync(file);
-                  const expectedSize = item.end - item.start;
+          const file = path.join(dir, `${ditem.key}${idx}`);
+          files.push(file);
 
-                  if (Math.abs(stats['size'] - expectedSize) < 10) {
-                    log.info(`file look like it's about the right size, skipping...`);
-                    len += stats['size'];
-                    return resolve(`skipping file${idx}`);
-                  } else {
-                    log.info(`file is ${stats['size']} bytes, but should be ${expectedSize} bytes, deleting and redownloading...`);
-                    fse.unlinkSync(file);
-                  }
+          try {
+            await (new Promise((resolve, reject) => {
+              if (fse.existsSync(file)) {
+
+                const stats = fse.statSync(file);
+                const expectedSize = item.end - item.start;
+
+                if (Math.abs(stats['size'] - expectedSize) < 10) {
+                  bar.tick(stats['size']);
+                  return resolve(`skipping file${idx}`);
+                } else {
+                  fse.unlinkSync(file);
                 }
+              }
 
-                const t0 = new Date();
+              request.get(copyOpts)
+              .on('error', reject)
+              .on('response', response => response.on('data', chunk => bar.tick(chunk.length)))
+              .pipe(fse.createWriteStream(file, { encoding: 'binary' }))
+              .on('close', _ => resolve(`file${idx} has been downloaded!`));
+            }));
+            idx++;
+          } catch (error) {
+            return reject(error);
+          }
+        }
 
-                request.get(copyOpts)
-                  .on('error', err => {
-                    reject(err);
-                  })
-                  .on('response', response => {
-                    response.on('data', chunk => {
-                      len += chunk.length;
-                      bar.tick(chunk.length);
-                    });
-                  })
-                  .pipe(fse.createWriteStream(file, { encoding: 'binary' }))
-                  .on('close', () => {
-                    resolve(`file${idx} has been downloaded! (${(new Date() - t0)/1000} seconds)`);
-                  });
-              }));
-              idx += 1;
-            } catch (error) {
-              return reject(error);
-            }
+        const writeStream = fse.createWriteStream(tempFilename, { flag: 'a' })
+        .addListener('finish', _ => {
+          fse.renameSync(tempFilename, destinationFilename);
+
+          if (fse.existsSync(tempFilename)) {
+            return reject(new Error('Error renaming file!'));
           }
 
-          log.info('all pieces have been downloaded!');
-          log.info('now, concat pieces...');
+          // delete temp files
+          files.forEach(file => {
+            fse.unlinkSync(file);
+          });
 
-          const ws = fse.createWriteStream(tmp, { flag: 'a' })
-          .addListener('finish', _ => {
-            log.info('rename file...');
-            fse.renameSync(tmp, dst);
+          writeStream.removeAllListeners();
 
-            if (fse.existsSync(tmp)) {
-              log.info('Error renaming file!');
-              return reject(new Error('Error renaming file!'));
-            }
+          return resolve(`${filename} has been downloaded!`);
+        })
+        .addListener('error', error => {
+          writeStream.removeAllListeners();
 
-            // delete temp files
-            log.info('now, delete pieces...');
-            files.forEach(file => {
-              fse.unlinkSync(file);
-            });
+          log.error('Error saving file!');
+          log.error(err);
 
-            ws.removeAllListeners();
+          return reject(error);
+        });
 
-            return resolve(`${dst} has been downloaded!`);
-          })
-          .addListener('error', error => {
-            log.info('Error saving file!');
-            log.info(err);
+        files.forEach(file => {
+          const buffer = fse.readFileSync(file);
+          writeStream.write(buffer);
+        });
+        writeStream.end();
+      } else {
+        const copyOpts = _.cloneDeep(opts);
+        copyOpts.headers['Range'] = `bytes=0-${ctLength - 1}`;
+        copyOpts.headers['Connection'] = 'keep-alive';
 
-            ws.removeAllListeners();
+        return request.get(copyOpts)
+        .on('error', err => {
+          request.removeAllListeners();
+
+          return reject(err);
+        })
+        .on('response', response => {
+          const writeStream = fse.createWriteStream(destinationFilename, { encoding: 'binary' });
+
+          response.on('error', error => {
+            request.removeAllListeners();
+            response.removeAllListeners();
 
             return reject(error);
-          });
+          })
+          .on('data', chunk => {
+            writeStream.write(chunk);
+            bar.tick(chunk.length);
+          })
+          .on('end', () => {
+            writeStream.end();
+            request.removeAllListeners();
+            response.removeAllListeners();
 
-          files.forEach(file => {
-            const bf = fse.readFileSync(file);
-            ws.write(bf);
+            return resolve(`${filename} has been downloaded!`);
           });
-          ws.end();
-        } else {
-          const copyOpts = _.cloneDeep(opts);
-          copyOpts.headers['Range'] = `bytes=0-${ctLength - 1}`;
-          copyOpts.headers['Connection'] = 'keep-alive';
-          let len = 0;
-          return request.get(copyOpts)
-            .on('error', err => {
-              return reject(err);
-            })
-            .on('response', resp => {
-              const ws = fse.createWriteStream(dst, { encoding: 'binary' });
-              resp.on('error', err => {
-                return reject(err);
-              });
-              resp.on('data', chunk => {
-                ws.write(chunk);
-                len += chunk.length;
-                bar.tick(chunk.length);
-              });
-              resp.on('end', () => {
-                ws.end();
-                console.log();
-                return resolve(`${dst} has been downloaded!`);
-              });
-            });
-        }
-      });
+        });
+      }
+    });
   });
-
-  return pm;
 };
 
 module.exports = {
