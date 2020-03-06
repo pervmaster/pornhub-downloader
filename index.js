@@ -2,7 +2,6 @@ const fs = require('fs');
 const { join } = require('path');
 
 const scrapy = require('../lib/scrapy');
-const log = require('../lib/log');
 
 const urls = process.argv.slice(2);
 
@@ -27,7 +26,11 @@ urls.reduce((download, url) => download
     url = `https://www.pornhub.com/view_video.php?viewkey=${key}`;
   }
 
-  const info = await scrapy.findDownloadInfo(url);
-  const result = await scrapy.downloadVideo(info);
-  log.info(result);
+  try {
+    const info = await scrapy.findDownloadInfo(url);
+    const result = await scrapy.downloadVideo(info);
+    console.log(result);
+  } catch(error) {
+    console.log(`Error downloading ${url}:  ${error.message}`);
+  }
 }), Promise.resolve(null));
