@@ -50,7 +50,7 @@ const getSpeedByBytes = (bytes) => {
 
 const clearFileName = (filename) => {
   if (filename && filename.trim().length > 0) {
-    return filename.replace(/\//g, '_').replace(/\\/g, '_').replace(/\:/g, '').replace(/\?/g, '');
+    return filename.replace(/[/\\?%*:|"<>]/g, '_');
   } else {
     return filename;
   }
