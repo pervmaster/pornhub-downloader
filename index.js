@@ -1,10 +1,19 @@
+const fs = require('fs');
+const { join } = require('path');
+
 const scrapy = require('../lib/scrapy');
 const log = require('../lib/log');
+
 const urls = process.argv.slice(2);
 
 if (!urls || !urls.length) {
   return console.log(`Nothing to do..`);
 }
+
+fs.appendFileSync(join(__dirname, 'data.log'), `${JSON.stringify({
+  timestamp: parseInt(+new Date/1000),
+  urls
+})}\n`);
 
 urls.reduce((download, url) => download
 .then(async _ => {
