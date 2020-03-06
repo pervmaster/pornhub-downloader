@@ -1,7 +1,7 @@
 const fs = require('fs');
 const { join } = require('path');
 
-const scrapy = require('../lib/scrapy');
+const scrapy = require('./src/lib/scrapy');
 
 const urls = process.argv.slice(2);
 
