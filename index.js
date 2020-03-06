@@ -3,6 +3,7 @@ const { join } = require('path');
 
 const scrapy = require('./src/lib/scrapy');
 const log = require('./src/lib/log');
+const cleanUrl = require('./src/lib/cleanUrl');
 
 const urls = process.argv.slice(2);
 
@@ -15,17 +16,10 @@ fs.appendFileSync(join(__dirname, 'data.log'), `${JSON.stringify({
   urls
 })}\n`);
 
-urls.reduce((download, url) => download
-.then(async _ => {
-  if (!url || !url.trim().length) {
-    return;
-  }
-
-  if (url.includes('thumbzilla.com') || url.slice(0,2) === 'ph') {
-    const key = url.length === 15 ? url : url.slice(url.search('video/ph') + 6).slice(0, 15);
-    url = `https://www.pornhub.com/view_video.php?viewkey=${key}`;
-  }
-
+urls
+.map(cleanUrl) // Validate and clean urls
+.filter(url => url) // Remove params that failed validation
+.reduce((download, url) => download.then(async _ => {
   try {
     const info = await scrapy.findDownloadInfo(url);
     const result = await scrapy.downloadVideo(info);
