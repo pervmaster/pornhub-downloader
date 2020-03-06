@@ -322,7 +322,6 @@ const downloadVideo = (ditem) => {
           const writeStream = fse.createWriteStream(destinationFilename, { encoding: 'binary' });
 
           response.on('error', error => {
-            request.removeAllListeners();
             response.removeAllListeners();
 
             return reject(error);
@@ -333,7 +332,6 @@ const downloadVideo = (ditem) => {
           })
           .on('end', () => {
             writeStream.end();
-            request.removeAllListeners();
             response.removeAllListeners();
 
             return resolve(`${filename} has been downloaded!`);
