@@ -2,6 +2,7 @@ const fs = require('fs');
 const { join } = require('path');
 
 const scrapy = require('./src/lib/scrapy');
+const log = require('./src/lib/log');
 
 const urls = process.argv.slice(2);
 
@@ -20,21 +21,16 @@ urls.reduce((download, url) => download
     return;
   }
 
-  if (url.slice(0,2) === 'ph' && url.length === 15) {
-    url = `https://www.pornhub.com/view_video.php?viewkey=${url}`;
-  }
-
-  if (url.includes('thumbzilla.com')) {
-    const parts = url.split('/');
-    const key = parts[parts.length - 2];
+  if (url.includes('thumbzilla.com') || url.slice(0,2) === 'ph') {
+    const key = url.length === 15 ? url : url.slice(url.search('video/ph') + 6).slice(0, 15);
     url = `https://www.pornhub.com/view_video.php?viewkey=${key}`;
   }
 
   try {
     const info = await scrapy.findDownloadInfo(url);
     const result = await scrapy.downloadVideo(info);
-    console.log(result);
+    log.info(result);
   } catch(error) {
-    console.log(`Error downloading ${url}:  ${error.message}`);
+    log.error(`Error downloading ${url}:  ${error.message}`);
   }
 }), Promise.resolve(null));
