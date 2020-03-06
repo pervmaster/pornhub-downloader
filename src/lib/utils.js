@@ -1,3 +1,5 @@
+const path = require('path');
+
 const getStrBySecs = (secs) => {
   let str = '0 sec';
   if (secs > 0) {
@@ -56,8 +58,19 @@ const clearFileName = (filename) => {
   }
 };
 
+const getTempFilename = (dir, key = 'na') => {
+  const encodedTimestamp = new Buffer
+  .from(`${+new Date}`, 'binary')
+  .toString('base64')
+  .replace(/=/g, '');
+
+  return path.join(dir, `${encodedTimestamp}.${key}.tmp`);
+};
+
+
 module.exports = {
   getStrBySecs,
   getSpeedByBytes,
   clearFileName,
+  getTempFilename,
 };
