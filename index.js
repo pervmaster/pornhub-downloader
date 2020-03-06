@@ -1,9 +1,9 @@
-const fs = require('fs');
 const { join } = require('path');
 
 const scrapy = require('./src/lib/scrapy');
 const log = require('./src/lib/log');
 const cleanUrl = require('./src/lib/cleanUrl');
+const logRequest = require('./src/lib/logger');
 
 const urls = process.argv.slice(2);
 
@@ -11,10 +11,7 @@ if (!urls || !urls.length) {
   return console.log(`Nothing to do..`);
 }
 
-fs.appendFileSync(join(__dirname, 'data.log'), `${JSON.stringify({
-  timestamp: parseInt(+new Date/1000),
-  urls
-})}\n`);
+logRequest(urls, join(__dirname, 'data.log'))
 
 urls
 .map(cleanUrl) // Validate and clean urls
