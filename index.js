@@ -20,6 +20,10 @@ urls.reduce((download, url) => download
     return;
   }
 
+  if (url.slice(0,2) === 'ph' && url.length === 15) {
+    url = `https://www.pornhub.com/view_video.php?viewkey=${url}`;
+  }
+
   if (url.includes('thumbzilla.com')) {
     const parts = url.split('/');
     const key = parts[parts.length - 2];
