@@ -1,7 +1,7 @@
 const { join } = require('path');
 
 const scrapy = require('./src/lib/scrapy');
-const log = require('./src/lib/log');
+const print = require('./src/lib/print');
 const cleanUrl = require('./src/lib/cleanUrl');
 const logRequest = require('./src/lib/logger');
 
@@ -20,8 +20,8 @@ urls
   try {
     const info = await scrapy.findDownloadInfo(url);
     const result = await scrapy.downloadVideo(info);
-    log.info(result);
+    print.info(result);
   } catch(error) {
-    log.error(`Error downloading ${url}:  ${error.message}`);
+    print.error(`Error downloading ${url}:  ${error.message}`);
   }
 }), Promise.resolve(null));

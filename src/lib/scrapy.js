@@ -7,7 +7,7 @@ const moment = require('moment');
 
 const config = require('../config.json');
 const utils = require('./utils');
-const log = require('./log');
+const print = require('./print');
 const ProgressBar = require('progress');
 
 const baseUrl = 'https://www.pornhub.com';
@@ -205,7 +205,7 @@ const downloadVideo = (ditem) => {
     };
 
     Object.assign(opts, baseReqOpts);
-    log.verbose(`downloading > ${filename}`);
+    print.verbose(`downloading > ${filename}`);
 
     const maxChunkLen = 20 * 1024 * 1024; // 20M
 
@@ -296,8 +296,8 @@ const downloadVideo = (ditem) => {
         .addListener('error', error => {
           writeStream.removeAllListeners();
 
-          log.error('Error saving file!');
-          log.error(err);
+          print.error('Error saving file!');
+          print.error(err);
 
           return reject(error);
         });
