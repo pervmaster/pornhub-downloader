@@ -1,23 +1,25 @@
 const { URL } = require('url');
 
+const LINK_PREFIX = 'https://www.pornhub.com/view_video.php?viewkey=';
+const MIN_KEY_LENGTH = 8;
+const MAX_KEY_LENGTH = 15;
+// TODO: Find out the min and max key lengths
+
 const cleanUrl = url => {
-  // Remove junk, minimum length of possible valid case would be a key alone 15 chars
-  if (!url || url.trim().length < 15) {
-    return false;
+  if (!url || url.constructor !== String) {
+    throw new Error('Bad param');
   }
 
-  // Check if url is actually a key.  Rules: 15 characters and starts with 'ph'
-  if (url.slice(0, 2) === 'ph' && url.length === 15) {
-    const key = url;
-
-    return `https://www.pornhub.com/view_video.php?viewkey=${key}`;
+  // Check if url is actually a key.
+  if (url.length >= MIN_KEY_LENGTH && url.length <= MAX_KEY_LENGTH) {
+    return `${LINK_PREFIX}${url}`;
   }
 
   // Check if url is actually a thumbzilla link
   if (url.includes('thumbzilla.com')) {
     const key = url.slice(url.search('/video/') + 7).split('/')[0];
 
-    return key.length ? `https://www.pornhub.com/view_video.php?viewkey=${key}` : false;
+    return key.length ? `${LINK_PREFIX}${key}` : false;
   }
 
   // Check if url is pornhub format
@@ -26,10 +28,9 @@ const cleanUrl = url => {
     const query = new URLSearchParams(urlObj.search);
     const key = query.get('viewkey');
 
-    return key.length ? `https://www.pornhub.com/view_video.php?viewkey=${key}` : false;
+    return key.length ? `${LINK_PREFIX}${key}` : false;
   }
 
-  // Fail everything else
   return false;
 };
 
