@@ -15,18 +15,18 @@ const cleanUrl = url => {
 
   // Check if url is actually a thumbzilla link
   if (url.includes('thumbzilla.com')) {
-    const key = url.slice(url.search('/video/ph') + 7).slice(0, 15);
+    const key = url.slice(url.search('/video/') + 7).split('/')[0];
 
-    return key.length === 15 ? `https://www.pornhub.com/view_video.php?viewkey=${key}` : false;
+    return key.length ? `https://www.pornhub.com/view_video.php?viewkey=${key}` : false;
   }
 
   // Check if url is pornhub format
   if (url.includes('pornhub.com')) {
-    const url = new URL(url);
-    const query = new URLSearchParams(url.search);
+    const urlObj = new URL(url);
+    const query = new URLSearchParams(urlObj.search);
     const key = query.get('viewkey');
 
-    return key.length === 15 ? `https://www.pornhub.com/view_video.php?viewkey=${key}` : false;
+    return key.length ? `https://www.pornhub.com/view_video.php?viewkey=${key}` : false;
   }
 
   // Fail everything else
