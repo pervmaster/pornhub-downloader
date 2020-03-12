@@ -8,7 +8,7 @@ const logRequest = require('./src/lib/logger');
 const urls = process.argv.slice(2);
 
 if (!urls || !urls.length) {
-  return console.log(`Nothing to do..`);
+  return console.log('Nothing to do..');
 }
 
 logRequest(urls, join(__dirname, 'data.log'))
@@ -21,7 +21,7 @@ urls
     const info = await scrapy.findDownloadInfo(url);
     const result = await scrapy.downloadVideo(info);
     print.info(result);
-  } catch(error) {
+  } catch (error) {
     print.error(`Error downloading ${url}:  ${error.message}`);
   }
 }), Promise.resolve(null));
