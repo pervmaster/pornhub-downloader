@@ -120,7 +120,7 @@ const parseDownloadInfo = (bodyStr) => {
 
   const videoId = parts[1];
   const idx2 = bodyStr.indexOf(`var flashvars_${videoId}`);
-  const flashVarsLength = bodyStr.substr(idx2).indexOf('loadScriptUniqueId.push(');
+  const flashVarsLength = bodyStr.substr(idx2).indexOf('playerObjList.playerDiv_');
 
   eval(bodyStr.substr(idx2, flashVarsLength));
   const videoOptions = eval(`qualityItems_${videoId}`);
