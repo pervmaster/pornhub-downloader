@@ -118,7 +118,7 @@ const parseDownloadInfo = (bodyStr) => {
     return info;
   }
 
-  const videoId = parts[1];
+  const videoId = parts[1].indexOf('"') ? parts[1].split('"')[0] : parts[1];
   const idx2 = bodyStr.indexOf(`var flashvars_${videoId}`);
   const flashVarsLength = bodyStr.substr(idx2).indexOf('playerObjList.playerDiv_');
 
